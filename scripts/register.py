@@ -83,6 +83,20 @@ def comment(repo: str, number: int, text: str, dry_run: bool) -> None:
         Path(path).unlink(missing_ok=True)
 
 
+def ensure_label(repo: str, number: int, dry_run: bool) -> None:
+    """Create the `register` label if missing and put it on the issue.
+
+    Issue forms only apply labels that already exist, so the first registration
+    ever would otherwise stay unlabelled. Failures here are logged, not fatal.
+    """
+    try:
+        run(["gh", "label", "create", "register", "--repo", repo, "--color", "1d76db",
+             "--description", "ORCID registration request", "--force"], dry_run=dry_run)
+        run(["gh", "issue", "edit", str(number), "--repo", repo, "--add-label", "register"], dry_run=dry_run)
+    except RuntimeError as exc:
+        log(f"could not apply the register label: {exc}")
+
+
 def close_issue(repo: str, number: int, dry_run: bool) -> None:
     """Close the issue as completed."""
     run(["gh", "issue", "close", str(number), "--repo", repo, "--reason", "completed"], dry_run=dry_run)
@@ -266,6 +280,7 @@ def main(argv: list[str] | None = None) -> int:
     if issue.get("state", "OPEN") != "OPEN":
         log(f"issue #{args.issue} is {issue.get('state')}; nothing to do")
         return 0
+    ensure_label(args.repo, args.issue, args.dry_run)
     login = str((issue.get("author") or {}).get("login") or "")
     if not LOGIN_RE.match(login):
         raise RuntimeError(f"unexpected issue author login {login!r}")

@@ -7,7 +7,7 @@ name: register
 
 on:
   issues:
-    types: [opened, edited]
+    types: [opened, edited, labeled]
 
 permissions:
   contents: write
@@ -15,7 +15,15 @@ permissions:
 
 jobs:
   register:
-    if: contains(github.event.issue.labels.*.name, 'register')
+    # Template labels are sometimes attached in a separate `labeled` event right after
+    # `opened`, so accept the label from either event, or the template's fixed title.
+    if: >-
+      contains(github.event.issue.labels.*.name, 'register') ||
+      github.event.label.name == 'register' ||
+      startsWith(github.event.issue.title, 'register')
+    concurrency:
+      group: register-${{ github.event.issue.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

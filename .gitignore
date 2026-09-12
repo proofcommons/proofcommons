@@ -1,0 +1,7 @@
+.lake/
+_site/
+*.olean
+*.ilean
+*.trace
+.tmp/
+__pycache__/

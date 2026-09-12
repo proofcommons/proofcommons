@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussion, ideas, proposals
+    url: https://github.com/proofcommons/proofcommons/discussions
+    about: Human discussion happens in Discussions. Statement threads are opened by the bot.

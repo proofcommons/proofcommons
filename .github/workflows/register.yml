@@ -1,0 +1,35 @@
+# register: link an ORCID iD to a GitHub account (trusted).
+# scripts/register.py reads the public ORCID record given in the issue and accepts the
+# registration only if that record lists https://github.com/<issue author> under
+# "Websites & social links". Nothing from the issue is executed; the body is only
+# searched for an ORCID iD pattern.
+name: register
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  register:
+    if: contains(github.event.issue.labels.*.name, 'register')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Configure git
+        run: |
+          git config user.name "proofcommons-bot"
+          git config user.email "bot@proofcommons.org"
+
+      - name: Check the ORCID record and register
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/register.py --repo ${{ github.repository }} --issue ${{ github.event.issue.number }} --root .

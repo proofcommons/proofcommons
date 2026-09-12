@@ -1,0 +1,34 @@
+# statement-issues: open the thread issue for every statement with issue = 0 and write
+# the issue number back into Statements/<Id>.toml (trusted).
+name: statement-issues
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Statements/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  statement-issues:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Configure git
+        run: |
+          git config user.name "proofcommons-bot"
+          git config user.email "bot@proofcommons.org"
+
+      - name: Open missing statement threads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/statement_issues.py --repo ${{ github.repository }} --root .

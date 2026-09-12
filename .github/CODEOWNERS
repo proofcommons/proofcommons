@@ -1,0 +1,14 @@
+# Changes to these paths need a review by a maintainer before they can be merged.
+# Proofs/ is deliberately absent: proof files are merged by the verifier.
+/Statements/          @akarsai
+/people/              @akarsai
+/ledger/              @akarsai
+/scripts/             @akarsai
+/.github/             @akarsai
+/Dockerfile           @akarsai
+/lakefile.toml        @akarsai
+/lake-manifest.json   @akarsai
+/lean-toolchain       @akarsai
+/epoch.toml           @akarsai
+/AGENTS.md            @akarsai
+/README.md            @akarsai

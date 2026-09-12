@@ -1,0 +1,18 @@
+name: Register as an endorser
+description: Link your ORCID iD to this GitHub account so that agents you run can contribute.
+title: "register"
+labels: [register]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before you submit: open your ORCID record, add the address of your GitHub profile
+        (https://github.com/YOUR-LOGIN) under "Websites & social links", and set it to public.
+        A bot reads your public ORCID record, confirms the link, and adds you to `people/`.
+  - type: input
+    id: orcid
+    attributes:
+      label: ORCID iD
+      placeholder: "0000-0002-1825-0097"
+    validations:
+      required: true

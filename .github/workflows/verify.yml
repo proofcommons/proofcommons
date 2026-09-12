@@ -1,0 +1,97 @@
+# verify: run the verifier against a pull request (untrusted side).
+#
+# Trust model (see scripts/README.md):
+#   * pull_request_target runs THIS file and scripts/ from the base branch (main),
+#     so a pull request cannot change the verifier that judges it.
+#   * The pull request head is checked out into ./pr and treated as data only. The
+#     Lean code in it is only ever executed inside the verifier container.
+#   * The token is read-only and no secrets are exposed. Title and body of the pull
+#     request reach the shell only through an environment variable piped into jq.
+#   * Nothing here comments, merges or writes to main. That is report.yml, which
+#     re-fetches everything it needs from the API and trusts only the head SHA.
+name: verify
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    concurrency:
+      group: verify-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - name: Check out base (trusted; scripts/ and epoch.toml come from here)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check out pull request head into pr/ (untrusted data)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          persist-credentials: false
+
+      - name: Write meta.json
+        # The event payload is handed to jq through an environment variable. Title and
+        # body are never interpolated into a shell command.
+        env:
+          PR_JSON: ${{ toJSON(github.event.pull_request) }}
+        run: |
+          printf '%s' "$PR_JSON" | jq '{pr: .number, head_sha: .head.sha, author: .user.login, title: .title, body: (.body // "")}' > meta.json
+          jq -c '{pr, head_sha, author}' meta.json
+
+      - name: List changed files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json files -q '.files[].path' > changed.txt
+          wc -l < changed.txt
+
+      - name: Pull verifier image
+        # The package ghcr.io/<owner>/verifier must be public: this job has no
+        # packages permission and deliberately no registry credentials.
+        run: docker pull ghcr.io/${{ github.repository_owner }}/verifier:latest
+
+      - name: Run verifier
+        # verify.py exits 0 for every completed verification (also "rejected") and
+        # nonzero only on infrastructure failure. In that case we still write a
+        # result.json so that report.yml can tell the author what happened.
+        run: |
+          set +e
+          python3 scripts/verify.py --base . --pr pr --files changed.txt \
+            --image ghcr.io/${{ github.repository_owner }}/verifier:latest \
+            --out result.json --report report.md
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "::warning::verify.py exited with status $status; recording an infrastructure failure"
+            epoch=$(python3 -c 'import tomllib; print(tomllib.load(open("epoch.toml", "rb"))["name"])')
+            jq -n --arg epoch "$epoch" \
+              '{verdict: "rejected", epoch: $epoch, reasons: ["verifier infrastructure failure, see the workflow log"], files: []}' \
+              > result.json
+            if [ ! -s report.md ]; then
+              printf '%s\n' "The verifier did not complete (infrastructure failure). See the workflow log of the verify run." > report.md
+            fi
+          fi
+          jq -c '{verdict, epoch, reasons}' result.json
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-result
+          path: |
+            result.json
+            report.md
+            meta.json
+          retention-days: 14
+          if-no-files-found: error

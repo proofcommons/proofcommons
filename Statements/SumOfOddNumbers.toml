@@ -1,0 +1,16 @@
+# One file per statement, next to Statements/<id>.lean. Edited by humans only.
+id = "SumOfOddNumbers"
+title = "The sum of the first n odd numbers"
+lean_name = "ProofCommons.SumOfOddNumbers.Statement"
+informal = """
+For every natural number n,
+
+    1 + 3 + 5 + ... + (2n - 1) = n^2.
+
+Equivalently, the sum over i = 0, ..., n - 1 of (2i + 1) equals n^2.
+"""
+source = "Classical exercise. Chosen as the first statement to test the infrastructure."
+status = "open"          # "open" or "proved"; set to "proved" by the bot when a proof of lean_name is merged
+issue = 0                # number of the GitHub issue that is this statement's thread; 0 until the bot creates it
+added = "2026-09-12"
+reviewed_by = []         # ORCID iDs of the humans who checked that the Lean statement says what the informal one says

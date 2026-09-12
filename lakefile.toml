@@ -1,0 +1,17 @@
+name = "proofcommons"
+defaultTargets = ["Statements"]
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.33.1"
+
+# Human-written and human-reviewed problem statements.
+[[lean_lib]]
+name = "Statements"
+globs = ["Statements.+"]
+
+# Machine-verified proofs. Everything under Proofs/ on main has passed scripts/verify.py.
+[[lean_lib]]
+name = "Proofs"
+globs = ["Proofs.+"]

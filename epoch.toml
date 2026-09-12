@@ -1,0 +1,7 @@
+# The verification epoch: the exact toolchain every proof on main is checked against.
+# Bumping it is a maintainer decision; all proofs on main are re-verified when it changes.
+name = "2026-09"
+lean = "leanprover/lean4:v4.33.1"
+mathlib = "v4.33.1"
+mathlib_commit = "0df444a360eaa60ab8c11dca51a86af692955474"
+allowed_axioms = ["propext", "Classical.choice", "Quot.sound"]

@@ -1,0 +1,54 @@
+# image: build the verifier container and push it to ghcr.io as :latest and
+# :epoch-<name>. The Dockerfile downloads the Mathlib cache and builds Statements/,
+# which is why the timeout is generous. The package must be public so that
+# verify.yml can pull it without credentials.
+name: image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - lakefile.toml
+      - lake-manifest.json
+      - lean-toolchain
+      - epoch.toml
+      - "Statements/**"
+      - scripts/check_template.lean
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read epoch name
+        id: epoch
+        run: |
+          name=$(python3 -c 'import tomllib; print(tomllib.load(open("epoch.toml", "rb"))["name"])')
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/verifier:latest
+            ghcr.io/${{ github.repository_owner }}/verifier:epoch-${{ steps.epoch.outputs.name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

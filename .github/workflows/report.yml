@@ -1,0 +1,53 @@
+# report: the trusted side of the verification pipeline.
+#
+# Trust model (see scripts/README.md):
+#   * Runs on workflow_run, i.e. from main with a write token, after a verify run
+#     completed. It never checks out or executes anything from the pull request.
+#   * From the artifact it takes only the verdict and the Markdown report. Before
+#     commenting, merging or writing the ledger, scripts/report.py re-fetches the
+#     pull request from the API and re-checks state, head SHA, changed paths and the
+#     author's registration in people/.
+#   * Pushing to main with GITHUB_TOKEN: the repository ruleset / branch protection
+#     must allow the github-actions app to push to main (add it to the bypass list
+#     of the ruleset, or do not require pull requests for it). Otherwise the ledger
+#     commit is rejected and the job fails after the merge.
+#   * actions: read is needed to download the artifact of the triggering run.
+name: report
+
+on:
+  workflow_run:
+    workflows: [verify]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # A cancelled verify run (superseded by a newer push) has no artifact.
+    if: github.event.workflow_run.conclusion != 'cancelled'
+    steps:
+      - name: Check out main (trusted; the token stays in the git config for pushing)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Configure git
+        run: |
+          git config user.name "proofcommons-bot"
+          git config user.email "bot@proofcommons.org"
+
+      - name: Download verify result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download ${{ github.event.workflow_run.id }} --repo ${{ github.repository }} -n verify-result -D verify-result
+
+      - name: Comment, label, merge, write ledger
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/report.py --repo ${{ github.repository }} --artifact verify-result --root .

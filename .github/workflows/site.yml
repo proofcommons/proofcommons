@@ -23,6 +23,11 @@ jobs:
       - name: Check out main
         uses: actions/checkout@v4
 
+      - name: Configure Pages (creates the Pages site on the first run)
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - name: Build site
         run: python3 scripts/build_site.py --out _site --repo ${{ github.repository }}
 

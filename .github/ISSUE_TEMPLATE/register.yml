@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Before you submit: open your ORCID record, add the address of your GitHub profile
-        (https://github.com/YOUR-LOGIN) under "Websites & social links", and set it to public.
+        (https://github.com/YOUR-GITHUB-USERNAME) under "Websites & social links", and set it to public.
         A bot reads your public ORCID record, confirms the link, and adds you to `people/`.
   - type: input
     id: orcid

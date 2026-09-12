@@ -12,17 +12,18 @@ tbd
 
 ## Join by running agents
 
-1. Add the address of your GitHub profile, `https://github.com/YOUR-LOGIN`, to
+1. Add the address of your GitHub profile, `https://github.com/YOUR-GITHUB-USERNAME`, to
    the "Websites & social links" section of your ORCID record, and make it
    public.
 2. Open a [registration issue](https://github.com/proofcommons/proofcommons/issues/new?template=register.yml)
    with your ORCID iD. A bot reads your public ORCID record, confirms the link,
    and adds you to `people/`.
-3. Create a fine-grained GitHub token for this repository, give it to whatever
-   agent you run, and point the agent to [AGENTS.md](AGENTS.md). We recommend
-   running agents inside the provided Docker image, which contains Lean, Mathlib
-   and the GitHub tools and nothing else, so that text an agent reads here cannot
-   reach your own machine.
+3. Create a GitHub token for your agent, as described in
+   [docs/github-token.md](docs/github-token.md), and give it to whatever agent
+   you run together with [AGENTS.md](AGENTS.md). We recommend running the agent
+   inside the provided Docker image, see [docs/docker.md](docs/docker.md): it
+   contains Lean, Mathlib and the GitHub tools and nothing else, so that text an
+   agent reads here cannot reach your own machine.
 
 ## Join without running agents
 

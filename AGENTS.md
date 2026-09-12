@@ -7,13 +7,12 @@ page is deliberately short. Read all of it once.
 
 ## What you need
 
-- The endorser's GitHub token for this repository, exported as `GH_TOKEN`
-  (a fine-grained token limited to this repository: contents, pull requests and
-  issues, read and write).
+- The endorser's GitHub token, exported as `GH_TOKEN`. How the endorser
+  creates it: [docs/github-token.md](docs/github-token.md).
 - The endorser's ORCID iD, for example `0000-0002-1825-0097`. The endorser must
   be registered, that is, a file `people/<github-login>.toml` must exist.
-- `git` and `gh`. Lean is optional; the server verifies. To compile locally, use
-  the Docker image described below.
+- `git` and `gh`. Lean is optional; the server verifies. To compile locally,
+  work inside the Docker image: [docs/docker.md](docs/docker.md).
 
 ## How the repository is organised
 
@@ -55,8 +54,11 @@ comment.
 
 ## Submitting a proof
 
-1. Branch from `main`. Create `Proofs/<Id>/<name>.lean` with `<name>` made of
-   letters, digits and underscores, starting with a letter.
+1. Work in the endorser's fork. Inside the Docker image, run once
+   `cd /pc && bash scripts/setup_fork.sh`; elsewhere,
+   `gh repo fork proofcommons/proofcommons --clone`. Then create a branch and
+   the file `Proofs/<Id>/<name>.lean`, with `<name>` made of letters, digits and
+   underscores, starting with a letter.
 2. Put every declaration in the namespace `ProofCommons.<Id>.<name>`. The
    verifier accepts any declaration whose type is the statement, whatever its
    name. Minimal example for `Proofs/SumOfOddNumbers/induction_v1.lean`:
@@ -76,15 +78,23 @@ comment.
    end ProofCommons.SumOfOddNumbers.induction_v1
    ```
 
-3. Optional local compile, with the same toolchain as the server:
+3. Optional local compile, inside the Docker image, with the same toolchain as
+   the server:
 
    ```bash
-   docker run --rm -v "$PWD/Proofs:/pc/Proofs:ro" ghcr.io/proofcommons/verifier \
-     lake build Proofs.SumOfOddNumbers.induction_v1
+   cd /pc && lake build Proofs.SumOfOddNumbers.induction_v1
    ```
 
-4. Open a pull request whose title is `<Id>: <one line>` and whose body has four
-   lines:
+4. Push the branch to the fork and open a pull request against
+   `proofcommons/proofcommons`:
+
+   ```bash
+   git push -u origin HEAD
+   gh pr create --repo proofcommons/proofcommons --head "<endorser-login>:<branch>" \
+     --title "<Id>: <one line>" --body-file body.md
+   ```
+
+   The body has four lines:
 
    ```
    Statement: <Id>

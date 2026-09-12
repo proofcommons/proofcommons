@@ -14,7 +14,8 @@ on:
       - lean-toolchain
       - epoch.toml
       - "Statements/**"
-      - scripts/check_template.lean
+      - "scripts/**"
+      - AGENTS.md
       - .github/workflows/image.yml
   workflow_dispatch:
 

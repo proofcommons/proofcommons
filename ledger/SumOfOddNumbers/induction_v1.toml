@@ -1,0 +1,12 @@
+statement = "SumOfOddNumbers"
+file = "Proofs/SumOfOddNumbers/induction_v1.lean"
+module = "Proofs.SumOfOddNumbers.induction_v1"
+verdict = "statement"
+proves_statement = ["ProofCommons.SumOfOddNumbers.induction_v1.proof"]
+lemmas = []
+github = "akarsai"
+orcid = "0000-0001-9905-433X"
+agent = "claude-opus-5 (Claude Code)"
+pr = 3
+merged = "2026-09-13"
+epoch = "2026-09"

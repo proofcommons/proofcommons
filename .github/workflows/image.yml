@@ -1,7 +1,13 @@
-# image: build the verifier container and push it to ghcr.io as :latest and
-# :epoch-<name>. The Dockerfile downloads the Mathlib cache and builds Statements/,
-# which is why the timeout is generous. The package must be public so that
-# verify.yml can pull it without credentials.
+# image: build the verifier container for linux/amd64 and linux/arm64 and push it
+# to ghcr.io as :latest and :epoch-<name>. The Dockerfile downloads the Mathlib
+# cache and builds Statements/, which is why the timeout is generous. The package
+# must be public so that verify.yml can pull it without credentials.
+#
+# Each platform is built on a runner of its own architecture (no emulation; Lean
+# under QEMU would take hours), pushed by digest, and the two digests are then
+# joined into one manifest list that carries the tags. Endorsers on Apple Silicon
+# get the arm64 image, CI and Intel machines the amd64 one, from the same tag.
+# The arm64 runner label is free for public repositories only.
 name: image
 
 on:
@@ -23,9 +29,20 @@ permissions:
   contents: read
   packages: write
 
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/verifier
+
 jobs:
-  image:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     steps:
       - name: Check out main
@@ -33,7 +50,8 @@ jobs:
 
       - name: Free disk space on the runner
         # The image holds Mathlib's cache, several GB; the runner's default free
-        # space is tight once the layers are exported. Remove preinstalled toolchains.
+        # space is tight once the layers are exported. Remove preinstalled toolchains
+        # (some of these paths do not exist on the arm64 runner; that is fine).
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
           sudo docker image prune -af >/dev/null 2>&1 || true
@@ -51,21 +69,74 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/${{ matrix.arch }}
+          # No tag here: the manifest is pushed under its digest only and tagged by
+          # the merge job below once both platforms exist.
+          tags: ${{ env.IMAGE }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+          # Cache in the registry next to the image instead of the Actions cache,
+          # whose 10 GB limit the Mathlib layer alone would exhaust. :latest is a
+          # manifest list; BuildKit picks the entry for the platform being built.
+          cache-from: type=registry,ref=${{ env.IMAGE }}:latest
+          cache-to: type=inline
+
+      - name: Save digest
+        run: |
+          mkdir -p "${RUNNER_TEMP}/digests"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${RUNNER_TEMP}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+          path: ${{ runner.temp }}/digests
+          merge-multiple: true
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Read epoch name
         id: epoch
         run: |
           name=$(python3 -c 'import tomllib; print(tomllib.load(open("epoch.toml", "rb"))["name"])')
           echo "name=$name" >> "$GITHUB_OUTPUT"
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/verifier:latest
-            ghcr.io/${{ github.repository_owner }}/verifier:epoch-${{ steps.epoch.outputs.name }}
-          # Cache in the registry next to the image instead of the Actions cache,
-          # whose 10 GB limit the Mathlib layer alone would exhaust.
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/verifier:latest
-          cache-to: type=inline
+      - name: Create and push the manifest list
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create \
+            -t "${IMAGE}:latest" \
+            -t "${IMAGE}:epoch-${{ steps.epoch.outputs.name }}" \
+            $(printf "${IMAGE}@sha256:%s " *)
+
+      - name: Show the result
+        run: docker buildx imagetools inspect "${IMAGE}:latest"

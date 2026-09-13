@@ -6,7 +6,10 @@ corresponding workflow stops working.
 - GitHub Pages is published from GitHub Actions (the `site` workflow), with the
   custom domain proofcommons.org configured in the Pages settings.
 - The container image `ghcr.io/proofcommons/verifier` is public. The `verify`
-  workflow pulls it without credentials, and so do endorsers.
+  workflow pulls it without credentials, and so do endorsers. It is built for
+  `linux/amd64` and `linux/arm64` (Apple Silicon) by the `image` workflow, which
+  uses GitHub's `ubuntu-24.04-arm` runner; that runner is free only while the
+  repository is public.
 - The ruleset on `main` requires a pull request with a review from code owners,
   and lets the GitHub Actions app bypass it. Together with `CODEOWNERS` this
   means: changes to `Statements/`, `scripts/`, `.github/` and the toolchain

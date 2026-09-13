@@ -115,7 +115,7 @@ release for the pinned toolchain exists (none for v4.33.1 at the time of writing
 | `register.yml` | issue with label `register` | trusted | `register.py`: ORCID public record must list the issue author's GitHub profile |
 | `statement-issues.yml` | push to main touching `Statements/` | trusted | opens the thread issue for statements with `issue = 0`, writes the number back |
 | `site.yml` | push to main | trusted | `build_site.py` -> GitHub Pages |
-| `image.yml` | push to main touching toolchain files, manual | trusted | builds and pushes `ghcr.io/<owner>/verifier:latest` and `:epoch-<name>` |
+| `image.yml` | push to main touching toolchain files, manual | trusted | builds `ghcr.io/<owner>/verifier` for amd64 and arm64 on native runners, pushes the manifest list as `:latest` and `:epoch-<name>` |
 
 Why `pull_request_target`: the workflow definition and `scripts/` always come from
 `main`, so a pull request cannot change the verifier that judges it. The untrusted

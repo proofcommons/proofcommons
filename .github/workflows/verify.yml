@@ -3,8 +3,9 @@
 # Trust model (see scripts/README.md):
 #   * pull_request_target runs THIS file and scripts/ from the base branch (main),
 #     so a pull request cannot change the verifier that judges it.
-#   * The pull request head is checked out into ./pr and treated as data only. The
-#     Lean code in it is only ever executed inside the verifier container.
+#   * The pull request head is fetched into ./pr with plain git, anonymously from
+#     the fork's public URL, and treated as data only. The Lean code in it is only
+#     ever executed inside the verifier container.
 #   * The token is read-only and no secrets are exposed. Title and body of the pull
 #     request reach the shell only through an environment variable piped into jq.
 #   * Nothing here comments, merges or writes to main. That is report.yml, which
@@ -32,13 +33,19 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Check out pull request head into pr/ (untrusted data)
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: pr
-          persist-credentials: false
+      - name: Fetch pull request head into pr/ (untrusted data)
+        # Plain git, anonymous, from the fork's public URL: no token touches the
+        # untrusted side. actions/checkout is not used here because since v4.4.0 it
+        # refuses fork heads under pull_request_target, and it would authenticate
+        # with the repository token. Nothing in pr/ is executed on the runner, only
+        # inside the verifier container with --network none.
+        env:
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git init -q pr
+          git -C pr fetch -q --depth 1 "https://github.com/${HEAD_REPO}.git" "$HEAD_SHA"
+          git -C pr checkout -q --detach FETCH_HEAD
 
       - name: Write meta.json
         # The event payload is handed to jq through an environment variable. Title and

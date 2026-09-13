@@ -120,5 +120,8 @@ release for the pinned toolchain exists (none for v4.33.1 at the time of writing
 Why `pull_request_target`: the workflow definition and `scripts/` always come from
 `main`, so a pull request cannot change the verifier that judges it. The untrusted
 Lean code only ever runs inside the container. The job has a read-only token and
-no secrets. Merging happens in `report.yml`, which trusts nothing from the PR
-except the head SHA it re-fetches from the API.
+no secrets. The fork's head is fetched into `pr/` with plain anonymous `git`
+from its public URL rather than with `actions/checkout`, which since v4.4.0
+refuses fork heads under `pull_request_target` and would use the repository
+token for the fetch. Merging happens in `report.yml`, which trusts nothing from
+the PR except the head SHA it re-fetches from the API.
